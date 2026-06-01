@@ -44,8 +44,8 @@ pi install -l git:github.com/ProbabilityEngineer/pi-jj-git-align
 
 - In Pi, run `/jj-init` in a repo to set up JJ.
 - Run `/jj-status` to hide/show the JJ status widget.
-- After finishing work, use shell `jj describe -m "message"` and `jj new --no-edit` so `@` is an empty working-copy change and `@-` is the completed change.
-- Run `/jj-align-push main` to confirm bookmark alignment to `@-`, export/import Git, attach Git HEAD to `main`, and push `main` for off-machine backup. If no branch is provided, it defaults to the current Git branch, then a bookmark on `@` or `@-`.
+- After finishing work in `@`, use shell `jj describe -m "message"`; `/jj-align-push main` can then move `main` to `@`, create a fresh empty `@` with `jj new main`, export/import Git, attach Git HEAD to `main`, and push `main` for off-machine backup.
+- If `@` is already empty and `@-` is the completed change, `/jj-align-push main` aligns to `@-` instead. If no branch is provided, it defaults to the current Git branch, then a bookmark on `@` or `@-`.
 - Desired final shape after backup: `@` is clean/empty, `@-` is the completed change, `main`, `main@git`, and `main@origin` point to `@-`, Git HEAD is attached to `main`, and `git status --short --branch` is clean.
 
 ## Workflow
@@ -53,6 +53,6 @@ pi install -l git:github.com/ProbabilityEngineer/pi-jj-git-align
 - Prefer `jj` for local edits, status, and history operations.
 - Avoid Git staged-index workflows (`git add`, `git commit`, `git diff --cached`) unless explicitly needed.
 - Allow `git fetch` and `git push` for colocated remote sync.
-- Before declaring work pushed or clean, completed work should usually be at `@-`, with the target bookmark moved to `@-`, exported to Git, pushed, imported back, and verified against `main@origin`. Agents should call `jj_vcs` with `action: "status"` when unsure.
+- Before declaring work pushed or clean, completed work should end up at `@-`, with the target bookmark exported to Git, pushed, imported back, and verified against `main@origin`. Prefer moving the bookmark to dirty/completed `@` first and then running `jj new <bookmark>`; avoid `jj new --no-edit` + blindly moving to `@-` unless verified. Agents should call `jj_vcs` with `action: "status"` when unsure.
 - Avoid dynamic prompt injection; keep guidance static and cache-friendly.
 - `scripts/ensure-jj.sh /path/to/repo` does the same from the shell.

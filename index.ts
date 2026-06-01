@@ -12,12 +12,13 @@ const agentsJjBlockStart = "<!-- pi-jj-git-align:jjtips:start -->";
 const agentsJjBlockEnd = "<!-- pi-jj-git-align:jjtips:end -->";
 const agentsJjGuidance = `${agentsJjBlockStart}
 ## Jujutsu Version Control
-- Use JJ for local work: \`jj status\`, \`jj diff\`, \`jj log\`, \`jj describe -m "message"\`, \`jj new --no-edit\`, \`jj op log\`, and \`jj undo\`.
+- Use JJ for local work: \`jj status\`, \`jj diff\`, \`jj log\`, \`jj describe -m "message"\`, \`jj new <bookmark>\`, \`jj op log\`, and \`jj undo\`.
 - Do not use Git staged-index workflows: no \`git add\`, \`git commit\`, \`git diff --cached\`, or \`git pull --rebase\`.
-- After completing coherent agent-owned work, run \`jj describe -m "message"\` and \`jj new --no-edit\`; \`@\` should be empty and \`@-\` should be the completed change.
+- After completing coherent agent-owned work in \`@\`, run \`jj describe -m "message"\`, move the target bookmark to \`@\`, then run \`jj new <bookmark>\` so \`@\` becomes an empty working-copy change and \`@-\` is the completed change.
+- Avoid the footgun sequence \`jj new --no-edit\` followed by moving a bookmark to \`@-\` unless you have verified that \`@-\` is actually the completed change.
 - Before declaring work pushed or clean, verify publish alignment: \`@\` is empty, \`@-\` is the completed change, the target bookmark plus \`<branch>@git\` and \`<branch>@origin\` point to \`@-\`, Git HEAD is attached to the branch, and \`git status --short --branch\` is clean.
 - If \`jj status\` is dirty before you start, treat it as pre-existing user work unless explicitly told to continue it.
-- For off-machine backup or publishing, prefer \`/jj-align-push [branch]\` after \`@\` is empty and \`@-\` is the completed change.
+- For off-machine backup or publishing, prefer \`/jj-align-push [branch]\`; it can finish dirty described \`@\` by moving the bookmark to \`@\` and creating a fresh empty \`@\` on that bookmark.
 ${agentsJjBlockEnd}`;
 
 type ChangeCounts = { added: number; modified: number; removed: number };
@@ -370,16 +371,19 @@ function alignPush(cwd: string, explicitBranch?: string): string {
 	const current = revInfo(cwd, "@");
 	const parked = revInfo(cwd, "@-");
 	const counts = countJjChanges(cwd);
-	if (isDirty(counts)) throw new Error("Working copy is dirty. Run jj describe and jj new --no-edit first.");
+	const dirty = isDirty(counts);
 	const branch = explicitBranch?.trim() || resolveTargetBranch(cwd, current, parked);
 	if (!branch) throw new Error("No Git branch or JJ bookmark found. Provide branch.");
 	if (!isValidBranchName(cwd, branch)) throw new Error(`Invalid Git branch name: ${branch}`);
-	if (!parked) throw new Error("No @- target found for alignment.");
+	const targetRev = dirty ? "@" : "@-";
+	const target = dirty ? current : parked;
+	if (!target) throw new Error(`No ${targetRev} target found for alignment.`);
 	const exists = runJj(["bookmark", "list", branch], cwd);
 	const bookmarkResult = exists && exists.includes(`${branch}:`)
-		? runJj(["bookmark", "move", branch, "--to", "@-"], cwd)
-		: runJj(["bookmark", "create", branch, "-r", "@-"], cwd);
+		? runJj(["bookmark", "move", branch, "--to", targetRev], cwd)
+		: runJj(["bookmark", "create", branch, "-r", targetRev], cwd);
 	if (!bookmarkResult) throw new Error("jj bookmark update failed");
+	if (dirty && runJj(["new", branch], cwd) === null) throw new Error(`jj new ${branch} failed`);
 	if (runJj(["git", "export"], cwd) === null) throw new Error("jj git export failed");
 	if (!attachGitHead(cwd, branch)) throw new Error(`Attaching Git HEAD to ${branch} failed`);
 	const pushResult = runGit(["push", "origin", branch], cwd);
@@ -498,19 +502,13 @@ export default function repoStatus(pi: ExtensionAPI) {
 
 	pi.registerCommand("jj-align-push", {
 		description:
-			"Confirm, align bookmark to @-, export/import Git, attach Git HEAD, and push the current Git branch or resolved bookmark",
+			"Confirm, align bookmark, export/import Git, attach Git HEAD, and push the current Git branch or resolved bookmark",
 		handler: async (args, ctx) => {
 			const explicitBranch = joinArgs(args).split(/\s+/).filter(Boolean)[0];
 			const current = revInfo(ctx.cwd, "@");
 			const parked = revInfo(ctx.cwd, "@-");
 			const counts = countJjChanges(ctx.cwd);
-			if (isDirty(counts)) {
-				ctx.ui.notify(
-					"Working copy is dirty. Run jj describe then jj new --no-edit before /jj-align-push.",
-					"warning",
-				);
-				return;
-			}
+			const dirty = isDirty(counts);
 			const branch = explicitBranch ?? resolveTargetBranch(ctx.cwd, current, parked);
 			if (!branch) {
 				ctx.ui.notify(
@@ -523,15 +521,16 @@ export default function repoStatus(pi: ExtensionAPI) {
 				ctx.ui.notify(`Invalid Git branch name: ${branch}`, "warning");
 				return;
 			}
-			const target = parked ?? current;
+			const targetRev = dirty ? "@" : "@-";
+			const target = dirty ? current : parked;
 			if (!target) {
-				ctx.ui.notify("No JJ target found for alignment", "warning");
+				ctx.ui.notify(`No JJ ${targetRev} target found for alignment`, "warning");
 				return;
 			}
 			const ok = await confirm(
 				ctx,
 				"Align and push to GitHub?",
-				`Move/create bookmark ${branch} at @- ${target.changeId} "${target.description}", export/import Git, attach Git HEAD to ${branch}, and run git push origin ${branch}?`,
+				`Move/create bookmark ${branch} at ${targetRev} ${target.changeId} "${target.description}"${dirty ? `, run jj new ${branch}` : ""}, export/import Git, attach Git HEAD to ${branch}, and run git push origin ${branch}?`,
 			);
 			if (!ok) return;
 			try {
