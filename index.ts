@@ -266,14 +266,24 @@ function statusDisabled(cwd: string): boolean {
 	return existsSync(join(cwd, disableMarker));
 }
 
-function toggleStatus(cwd: string): string {
+function setStatusEnabled(cwd: string, enabled: boolean): string {
 	const marker = join(cwd, disableMarker);
-	if (existsSync(marker)) {
-		unlinkSync(marker);
+	if (enabled) {
+		try {
+			unlinkSync(marker);
+		} catch (error) {
+			if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
+				throw error;
+			}
+		}
 		return "jj statusline enabled";
 	}
 	writeFileSync(marker, "disabled\n");
 	return "jj statusline disabled";
+}
+
+function toggleStatus(cwd: string): string {
+	return setStatusEnabled(cwd, statusDisabled(cwd));
 }
 
 function initJj(cwd: string): string {
@@ -441,8 +451,8 @@ export default function repoStatus(pi: ExtensionAPI) {
 		const next = buildJjStatus(ctx.cwd, sessionStart);
 		const rendered = next
 			? next.dirty || next.warning
-				? ctx.ui.theme.fg("warning", next.text)
-				: `\x1b[38;5;71m${next.text}\x1b[39m`
+				? `${ctx.ui.theme.fg("warning", next.text)}\x1b[0m`
+				: next.text
 			: undefined;
 		if (rendered === lastRendered) return;
 		lastRendered = rendered;
@@ -492,10 +502,22 @@ export default function repoStatus(pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand("jj-status", {
-		description: "Toggle the JJ statusline on/off",
-		handler: async (_args, ctx) => {
-			const result = toggleStatus(ctx.cwd);
-			ctx.ui.notify(result, "info");
+		description: "Toggle the JJ statusline on/off. Optional: /jj-status on|off|toggle",
+		handler: async (args, ctx) => {
+			const mode = joinArgs(args).toLowerCase();
+			try {
+				const result = mode === "on" || mode === "enable"
+					? setStatusEnabled(ctx.cwd, true)
+					: mode === "off" || mode === "disable"
+						? setStatusEnabled(ctx.cwd, false)
+						: toggleStatus(ctx.cwd);
+				ctx.ui.notify(result, "info");
+			} catch (error) {
+				ctx.ui.notify(
+					`jj statusline toggle failed: ${error instanceof Error ? error.message : String(error)}`,
+					"warning",
+				);
+			}
 			refresh(ctx);
 		},
 	});
