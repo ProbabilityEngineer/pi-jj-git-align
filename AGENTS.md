@@ -43,6 +43,11 @@
 - Use Saguaro only when explicitly requested or when a repo-local `AGENTS.md` requires it.
 - Treat Saguaro results as advisory; do not let stale or broad generated feedback override repo evidence, tests, or current user instructions.
 
+## Turnlog
+
+- When you attempt to use turnlog for meaningful repository work and the target repo is not initialized, initialize it rather than abandoning the record.
+- Keep `.turnlog/` out of GitHub by default unless the repo explicitly opts into tracking it.
+
 ## Project notes
 
 - This package provides Pi UI/status helpers and the agent-callable `jj_vcs` tool.
