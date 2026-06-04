@@ -6,3 +6,5 @@ node_modules/
 *.db
 .beads-credential-key
 .turnlog/
+
+.claude/
