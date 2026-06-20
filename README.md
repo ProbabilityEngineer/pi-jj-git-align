@@ -1,5 +1,7 @@
 # pi-jj-git-align
 
+> One of my diet context engineering and workflow extensions. Add pi-diet-LSP, pi-diet-Ripgrep, pi-repo-move and others from [npm](https://www.npmjs.com/~probabilityengineer).
+
 Guarded jj+Git publish alignment for git-colocated Jujutsu repos in Pi.
 
 Jujutsu/jj status and guarded GitHub publishing for colocated jj+Git repos in Pi. Shows repo state, warns about jj/Git misalignment, and provides `/jj-align-push` plus a model-visible `jj_vcs` tool to align the target branch/bookmark, Git HEAD, and origin with `@-` (the completed change) before declaring work pushed. Defaults to the current Git branch, then a bookmark on `@` or `@-`. Keeps prompt overhead low: it registers a compact tool and commands, but does not inject dynamic VCS status into model context.
