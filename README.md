@@ -1,6 +1,6 @@
 # pi-jj-git-align
 
-> One of my diet context engineering and workflow extensions. Add pi-diet-LSP, pi-diet-Ripgrep, pi-repo-move and others from [npm](https://www.npmjs.com/~probabilityengineer).
+> One of my diet context engineering and workflow extensions. Explore the complete collection: <https://www.npmjs.com/~probabilityengineer>
 
 Guarded jj+Git publish alignment for git-colocated Jujutsu repos in Pi.
 
