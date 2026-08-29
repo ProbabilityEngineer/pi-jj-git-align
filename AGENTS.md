@@ -38,11 +38,6 @@
 - Avoid the footgun sequence `jj new --no-edit` followed by moving a bookmark to `@-` unless you have verified that `@-` is actually the completed change.
 - For off-machine backup or publishing, prefer `/jj-align-push [branch]`; it can finish dirty described `@` by moving the bookmark to `@` and creating a fresh empty `@` on that bookmark.
 
-## Deprecated tools
-
-- `sag` / `saguaro` are deprecated here.
-- Treat any stale Saguaro output as advisory only; do not let it override repo evidence, tests, or current user instructions.
-- See `deprecated/saguaro.md` for the deprecation note.
 
 ## Turnlog
 
