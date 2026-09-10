@@ -1,51 +1,38 @@
 # Agent Instructions
 
-## Workflow
+## Repository setup
 
-- Start with the most specific code-intelligence tool for the request, then use explicit repo-relative paths for follow-up reads, searches, and edits; if the repo seems wrong, stop and ask.
-- For syntax-shaped requests, start with AST/LSP before semantic search.
-- For behavior or intent requests, start with Semble before file listing or literal search.
-- Use diagnostics before broad builds when an LSP is available.
+- TypeScript Pi extension; validate with `npm run lint` and relevant alignment-state tests.
+- Extension entry point: `index.ts`; keep Pi peer-dependency compatibility intact.
+- `jj_vcs` performs guarded Git publication alignment. Keep model-visible alignment checks in tools, not only UI widgets.
 
-## Structural edits
+## Working method
 
-- Prefer ast-grep for simple structural replacements.
-- Use precise text edits for complex multi-line changes.
+- Start with the most specific code-intelligence tool for the request, then use explicit repo-relative paths. If the repository is not the expected one, stop and ask.
+- Use LSP for known symbols, definitions, references, types, call sites, and diagnostics.
+- Use AST-grep for syntax-shaped discovery and structural edits; use Semble for behavior or intent discovery; use ripgrep for exact literals and verification.
 
-## Tickets
+## Project invariants
 
-- Use tk tickets for non-trivial feature/fix work.
-- Avoid ticket overhead for tiny direct tasks.
-- Ticket actions may modify `.tickets/` but should not touch code unless the task requires it.
+- Keep the slash-command surface compact: `/jj-init`, `/jj-status`, and `/jj-align-push`.
+- Test alignment checks against clean, dirty, diverged, and remote-ahead repository states.
+- Preserve fail-closed behavior before any publication or history-altering operation.
 
-## Shell
+## Git and npm publishing
 
-- Prefer explicit paths for file operations.
-- Avoid interactive prompts in automation.
-- Prefer non-interactive flags such as `cp -f`, `mv -f`, `scp -o BatchMode=yes`, `ssh -o BatchMode=yes`, and `apt-get -y`.
-- Ask before deleting files or directories.
+- Git is the version-control system for this repository. Inspect `git status` and relevant diffs before editing and before finishing.
+- Make small, coherent commits with clear messages after relevant validation. Do not rewrite published history, force-push, discard unrelated changes, or delete branches unless explicitly asked.
+- Keep `package.json`, lockfile, and release tag versions aligned. Push the release commit before its `vX.Y.Z` tag when publishing is tag-triggered.
+- Publish through GitHub Actions with npm provenance/trusted publishing; verify the npm version and dist-tag after the workflow succeeds.
+
+## Work tracking
+
+- Use `clu` as the authoritative source of project tasks and work state. For substantial work, run `clu ready`, claim work with `clu claim --context`, and read inherited context before editing.
+- Record required work, useful notes, and dependencies in `clu`; close completed work after validation and leave incomplete/blocked work represented there.
+- Use Turnlog separately for decisions, experiments, rationale, and lessons learned.
+
+## Local agent state and shell safety
+
+- Keep `.pi/` and `.turnlog/` out of Git. For `clu`, track portable `.clu/config.yaml` and `.clu/templates/`; ignore mutable `.clu/data.sqlite`, WAL/SHM files, and `.clu/backups/`.
+- Prefer explicit paths and non-interactive commands. Ask before deleting files or directories.
 - Set `HOMEBREW_NO_AUTO_UPDATE=1` for Homebrew commands.
-
-## Jujutsu and Git
-
-- Use jj for local VCS operations: `jj status`, `jj diff`, `jj log`, `jj describe -m "message"`, `jj new <bookmark>`, `jj op log`, and `jj undo`.
-- Use Git only for remote interoperability.
-- Do not use Git staged-index workflows: no `git add`, `git commit`, `git diff --cached`, or `git pull --rebase`.
-- Before starting, inspect `jj status`; dirty state is pre-existing user work unless explicitly told to continue it.
-- After completing coherent agent-owned work in `@`, run `jj describe -m "message"`, move the target bookmark to `@`, then run `jj new <bookmark>` so `@` is empty and `@-` is the completed change.
-- Desired final publish shape: `@` is empty; `@-` is the completed change; `main`, `main@git`, and `main@origin` point to `@-`; Git HEAD is attached to `main`; `git status --short --branch` is clean and shows `## main...origin/main`.
-- Before declaring work pushed or clean, verify bookmark/branch alignment; a clean jj working copy is not enough.
-- Avoid the footgun sequence `jj new --no-edit` followed by moving a bookmark to `@-` unless you have verified that `@-` is actually the completed change.
-- For off-machine backup or publishing, prefer `/jj-align-push [branch]`; it can finish dirty described `@` by moving the bookmark to `@` and creating a fresh empty `@` on that bookmark.
-
-
-## Turnlog
-
-- When you attempt to use turnlog for meaningful repository work and the target repo is not initialized, initialize it rather than abandoning the record.
-- Keep `.turnlog/` out of GitHub by default unless the repo explicitly opts into tracking it.
-
-## Project notes
-
-- This package provides Pi UI/status helpers and the agent-callable `jj_vcs` tool.
-- Keep the slash command surface compact: `/jj-init`, `/jj-status`, and `/jj-align-push`.
-- Keep model-visible alignment checks in tools, not only in UI widgets.
